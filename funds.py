@@ -210,20 +210,10 @@ class Portfolio:
         return sum([fond.get_deposit_by_date(date) for ticker, fond in self.portfolio.items()])
 
     def get_summary(self):
-        summary = []
-        total_value, total_deposited = 0, 0
+        summary = [fond.get_summary() for fond in self.portfolio.values()]
+        combined_development = self.get_total_development(map(lambda x: deepcopy(x["development"]), summary))
 
-        for ticker, fond in self.portfolio.items():
-            fond = fond.get_summary()
-            total_value += fond["development"][-1]["value"]
-            total_deposited += fond["total_deposited"]
-            summary += [{
-                "ticker": ticker,
-                "deposited": fond["total_deposited"],
-                "value": fond["development"][-1]["value"]
-            }]
-
-        return summary + [{"ticker": "Total", "deposited": total_deposited, "value": total_value}]
+        return summary + [combined_development]
 
     def get_total_development(self, fonds):
         def add_lists(list_a, list_b):
@@ -245,7 +235,7 @@ class Portfolio:
         for quote in result:
             accumulated_deposits += self.get_deposits_by_date(quote["date"])
 
-        return {"name": "Portfolio", "development": result, "total_deposited": accumulated_deposits}
+        return {"name": "Portfolio", "ticker": "Portfolio", "development": result, "total_deposited": accumulated_deposits}
 
     def deposit(self, ticker, date, amount):
         if ticker not in self.portfolio:

@@ -22,19 +22,6 @@ def create_user():
     js = repo.create_user().to_json()
     return Response(js, status=201, mimetype="application/json")
 
-@app.route("/user/<user_id>/value")
-def api_monetary(user_id):
-    date_handler = lambda obj: (
-        obj.isoformat()
-        if isinstance(obj, datetime)
-        or isinstance(obj, date)
-        else None
-    )
-
-    portfolio = repo.get_portfolio(user_id)
-    js = json.dumps(portfolio.get_monetary_value_of_fonds(), default=date_handler)
-    return Response(js, status=200, mimetype="application/json")
-
 @app.route("/user/<user_id>/summary")
 def api_summary(user_id):
     date_handler = lambda obj: (
