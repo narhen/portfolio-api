@@ -4,6 +4,7 @@ import sys
 import json
 from flask import Flask, url_for, request, Response
 from flask_cors import CORS
+from flask_jwt import JWT, jwt_required, current_identity
 from datetime import datetime, date
 
 from repository import Repository
@@ -11,15 +12,28 @@ import settings
 
 repo = Repository()
 app = Flask(__name__)
+app.config["SECRET_KEY"] = settings.secret_key
 CORS(app)
 
+def authenticate(username, password):
+    return repo.get_user_info(username, password)
+
+def identity(payload):
+    return repo.get_user_info_by_id(payload["identity"])
+
+jwt = JWT(app, authenticate, identity)
+
 @app.route("/")
+@jwt_required()
 def api_root():
     return "Welcome"
 
-@app.route("/create_user")
+@app.route("/create_user", methods=["POST"])
 def create_user():
-    js = repo.create_user().to_json()
+    username = request.form["username"]
+    password = request.form["password"]
+
+    js = repo.create_user(username, password)
     return Response(js, status=201, mimetype="application/json")
 
 @app.route("/user/<user_id>/summary")
@@ -60,7 +74,6 @@ def deposit(user_id):
     portfolio = repo.get_portfolio(user_id)
     portfolio.deposit(ticker, date, amount)
     repo.put_portfolio(portfolio)
-
     return Response(status=201)
     
 def main():

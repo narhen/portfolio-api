@@ -24,7 +24,6 @@ class Investment:
 
     def _get_quotes_from_remote(self):
         start = time.time()
-        print "start: get quotes from remote"
         quotes = requests.get(self.quotes_source_url).text
         f = StringIO.StringIO(quotes)
         reader = csv.reader(f)
