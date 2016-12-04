@@ -4,6 +4,8 @@ import sys
 import json
 import psycopg2
 import bcrypt
+import uuid
+from datetime import datetime
 
 class Database:
     def __init__(self, dbname, host, port, user, password):
@@ -13,12 +15,15 @@ class Database:
 
         self.schema = "portfolioapi"
         self.table = "user"
+        self.session_table = "session"
 
         self._initialize_database()
 
     def _initialize_database(self):
         self.cur.execute("""CREATE SCHEMA IF NOT EXISTS {}""".format(self.schema))
         self.cur.execute("""CREATE TABLE IF NOT EXISTS {}.{}(id BIGSERIAL PRIMARY KEY, document JSONB)""".format(self.schema, self.table))
+        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}.{} (key uuid PRIMARY KEY, user_id BIGSERIAL, created TIMESTAMP)"""
+            .format(self.schema, self.session_table))
         self.connection.commit()
 
     def get_portfolio(self, user_id):
@@ -48,25 +53,34 @@ class Database:
 
         return user_doc
 
-    def get_user_by_id(self, user_id):
-        sql = """SELECT * FROM {}.{} WHERE id=%s""".format(self.schema, self.table)
+    def get_user_info_by_google_id(self, google_id):
+        sql = """SELECT id, document -> 'user' FROM %s.%s WHERE document #>> '{user,id}' = %%s""" % (self.schema, self.table)
+        data = (google_id,)
+
+        self.cur.execute(sql, data)
+        self.connection.commit()
+
+        user_info = self.cur.fetchone()
+        if not user_info:
+            return None
+
+        user_id, user_info = user_info
+        user_info["user_id"] = user_id
+        return user_info
+
+    def get_user_info_by_id(self, user_id):
+        sql = """SELECT document FROM {}.{} WHERE id = %%s""".format(self.schema, self.table)
         data = (user_id,)
         self.cur.execute(sql, data)
         self.connection.commit()
 
-        user_info = self.cur.fetchone()[1]
+        user_info = self.cur.fetchone()[0]
         user_info["user"]["user_id"] = user_id
         return user_info
 
-    def create_user(self, username, password):
+    def create_user(self, user_info):
         sql = """INSERT INTO {}.{} (document) VALUES (%s) RETURNING id""".format(self.schema, self.table)
-        data = (json.dumps(
-        {
-            "user": {
-                "username": username,
-                "password": bcrypt.hashpw(str(password), bcrypt.gensalt())
-            }
-        }),)
+        data = (json.dumps({ "user": user_info}),)
 
         self.cur.execute(sql, data)
         self.connection.commit()
@@ -79,6 +93,32 @@ class Database:
 
         self.cur.execute(sql, data)
         self.connection.commit()
+
+    def delete_sessions_for_user(self, user_id):
+        sql = """DELETE from {}.{} where user_id = %s""".format(self.schema, self.session_table)
+        data = (user_id,)
+
+        self.cur.execute(sql, data)
+        self.connection.commit()
+
+    def new_session(self, user_id):
+        self.delete_sessions_for_user(user_id)
+        new_uuid = str(uuid.uuid4())
+        sql = """INSERT INTO {}.{} (key, user_id, created) VALUES (%s, %s, %s)""".format(self.schema, self.session_table)
+        data = (new_uuid, user_id, datetime.now())
+
+        self.cur.execute(sql, data)
+        self.connection.commit()
+
+        return new_uuid
+
+    def get_session(self, uuid):
+        sql = """SELECT * FROM {}.{} WHERE key = %s""".format(self.schema, self.session_table)
+        data = (uuid,)
+
+        self.cur.execute(sql, data)
+        self.connection.commit()
+        return self.cur.fetchone()
 
     def close(self):
         self.cur.close()
