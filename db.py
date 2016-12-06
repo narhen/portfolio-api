@@ -26,13 +26,21 @@ class Database:
             .format(self.schema, self.session_table))
         self.connection.commit()
 
-    def get_portfolio(self, user_id):
-        sql = """SELECT * FROM {}.{} WHERE ID=%s""".format(self.schema, self.table)
+    def get_portfolio(self, session_token):
+        session = self.get_session(session_token)
+        if not session:
+            return None
+
+        uuid, user_id, timestamp = session
+
+        sql = """SELECT id, document FROM {}.{} WHERE ID=%s""".format(self.schema, self.table)
         data = (user_id,)
         self.cur.execute(sql, data)
         self.connection.commit()
 
-        return self.cur.fetchone()[1]
+        user_id, doc = self.cur.fetchone()
+        doc["user"]["user_id"] = user_id
+        return doc
 
     def get_user(self, username, password):
         sql = """SELECT id, document -> 'user' FROM %s.%s WHERE document #>> '{user,username}' = %%s""" % (self.schema, self.table)
@@ -68,8 +76,14 @@ class Database:
         user_info["user_id"] = user_id
         return user_info
 
-    def get_user_info_by_id(self, user_id):
-        sql = """SELECT document FROM {}.{} WHERE id = %%s""".format(self.schema, self.table)
+    def get_user_info(self, session_token):
+        session = self.get_session(session_token)
+        if not session:
+            return None
+
+        uuid, user_id, timestamp = session
+
+        sql = """SELECT document FROM {}.{} WHERE id = %s""".format(self.schema, self.table)
         data = (user_id,)
         self.cur.execute(sql, data)
         self.connection.commit()
@@ -112,9 +126,19 @@ class Database:
 
         return new_uuid
 
-    def get_session(self, uuid):
+    def _is_valid_uuid4(self, uuid_string):
+        try:
+            uuid.UUID(uuid_string, version=4)
+        except ValueError:
+            return False
+        return True
+
+    def get_session(self, uuid_string):
+        if not self._is_valid_uuid4(uuid_string):
+            return None
+
         sql = """SELECT * FROM {}.{} WHERE key = %s""".format(self.schema, self.session_table)
-        data = (uuid,)
+        data = (uuid_string,)
 
         self.cur.execute(sql, data)
         self.connection.commit()

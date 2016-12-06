@@ -34,6 +34,15 @@ google = oauth.remote_app('google',
 
 login_state = TTLCache(maxsize=128, ttl=1*60) # 1 minute ttl
 
+@app.before_request
+def check_if_valid_session_key():
+    if request.endpoint in ["login", "authorized", "login_verify"]:
+        return None
+
+    session_key = request.headers.get("api-key")
+    if not session_key or not repo.valid_session_key(session_key):
+        return Response(status=401)
+
 @app.route('/login')
 def login():
     success, failure = request.args.get("onSuccess"), request.args.get("onFailure")
@@ -75,16 +84,22 @@ def login_verify():
     session_key = repo.generate_session_key(res.json())
     return redirect(urlparse.urljoin(onSuccessUrl, session_key))
 
-@app.route("/create_user", methods=["POST"])
-def create_user():
-    username = request.form["username"]
-    password = request.form["password"]
+@app.route("/userinfo")
+def userinfo():
+    session_token = request.headers.get("api-key")
 
-    js = repo.create_user(username, password)
-    return Response(js, status=201, mimetype="application/json")
+    js = repo.get_user_info(session_token)
+    if not js:
+        return Response(status=400)
 
-@app.route("/user/<user_id>/summary")
-def api_summary(user_id):
+    return Response(json.dumps(js), status=200, mimetype="application/json")
+
+@app.route("/summary")
+def api_summary():
+    session_token = request.headers.get("api-key")
+    if not session_token:
+        return Response(status=401)
+
     date_handler = lambda obj: (
         obj.isoformat()
         if isinstance(obj, datetime)
@@ -96,7 +111,7 @@ def api_summary(user_id):
     js = json.dumps(portfolio.get_summary(), default=date_handler)
     return Response(js, status=200, mimetype="application/json")
 
-@app.route("/user/<user_id>/addfond", methods=["POST"])
+@app.route("/addfond", methods=["POST"])
 def add_fond(user_id):
     ticker = request.form["ticker"]
     name = request.form["name"]
@@ -110,7 +125,7 @@ def add_fond(user_id):
 
     return Response(status=201)
 
-@app.route("/user/<user_id>/deposit", methods=["PUT"])
+@app.route("/deposit", methods=["PUT"])
 def deposit(user_id):
     ticker = request.form["ticker"]
     date = datetime.strptime(request.form["date"], "%Y-%m-%d").date()
