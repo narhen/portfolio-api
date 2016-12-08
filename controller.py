@@ -36,6 +36,9 @@ login_state = TTLCache(maxsize=128, ttl=1*60) # 1 minute ttl
 
 @app.before_request
 def check_if_valid_session_key():
+    if request.method == "OPTIONS":
+        return None
+
     if request.endpoint in ["login", "authorized", "login_verify"]:
         return None
 
@@ -97,8 +100,6 @@ def userinfo():
 @app.route("/summary")
 def api_summary():
     session_token = request.headers.get("api-key")
-    if not session_token:
-        return Response(status=401)
 
     date_handler = lambda obj: (
         obj.isoformat()
@@ -107,18 +108,18 @@ def api_summary():
         else None
     )
 
-    portfolio = repo.get_portfolio(user_id)
+    portfolio = repo.get_portfolio(session_token)
     js = json.dumps(portfolio.get_summary(), default=date_handler)
     return Response(js, status=200, mimetype="application/json")
 
 @app.route("/addfond", methods=["POST"])
-def add_fond(user_id):
+def add_fond():
+    session_token = request.headers.get("api-key")
     ticker = request.form["ticker"]
     name = request.form["name"]
     ref_ticker = request.form.get("ref_ticker", None)
-    print "add_fond", ticker, name, ref_ticker
 
-    portfolio = repo.get_portfolio(user_id)
+    portfolio = repo.get_portfolio(session_token)
     portfolio.add_fond(ticker, name, ref_ticker)
 
     repo.put_portfolio(portfolio)
@@ -126,14 +127,13 @@ def add_fond(user_id):
     return Response(status=201)
 
 @app.route("/deposit", methods=["PUT"])
-def deposit(user_id):
+def deposit():
+    session_token = request.headers.get("api-key")
     ticker = request.form["ticker"]
     date = datetime.strptime(request.form["date"], "%Y-%m-%d").date()
     amount = request.form["amount"]
 
-    print date
-
-    portfolio = repo.get_portfolio(user_id)
+    portfolio = repo.get_portfolio(session_token)
     portfolio.deposit(ticker, date, amount)
     repo.put_portfolio(portfolio)
     return Response(status=201)

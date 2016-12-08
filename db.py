@@ -42,24 +42,12 @@ class Database:
         doc["user"]["user_id"] = user_id
         return doc
 
-    def get_user(self, username, password):
-        sql = """SELECT id, document -> 'user' FROM %s.%s WHERE document #>> '{user,username}' = %%s""" % (self.schema, self.table)
-        data = (username,)
+    def save_user(self, user_info, user_id):
+        sql = """UPDATE {}.{} SET document=%s WHERE ID=%s""".format(self.schema, self.table)
+        data = (user_info, user_id)
+
         self.cur.execute(sql, data)
         self.connection.commit()
-
-        result = self.cur.fetchone()
-        if not result:
-            return None
-
-        user_id, user_doc = result
-        user_doc["user_id"] = user_id
-
-        hashed_pw = user_doc["password"]
-        if not bcrypt.hashpw(str(password), str(hashed_pw)) == hashed_pw:
-            return None
-
-        return user_doc
 
     def get_user_info_by_google_id(self, google_id):
         sql = """SELECT id, document -> 'user' FROM %s.%s WHERE document #>> '{user,id}' = %%s""" % (self.schema, self.table)
@@ -74,6 +62,17 @@ class Database:
 
         user_id, user_info = user_info
         user_info["user_id"] = user_id
+        return user_info
+
+
+    def get_user_info_by_user_id(self, user_id):
+        sql = """SELECT document FROM {}.{} WHERE id = %s""".format(self.schema, self.table)
+        data = (user_id,)
+        self.cur.execute(sql, data)
+        self.connection.commit()
+
+        user_info = self.cur.fetchone()[0]
+        user_info["user"]["user_id"] = user_id
         return user_info
 
     def get_user_info(self, session_token):
@@ -100,13 +99,6 @@ class Database:
         self.connection.commit()
 
         return self.cur.fetchone()[0]
-
-    def save_portfolio(self, portfolio, user_id):
-        sql = """UPDATE {}.{} SET document=%s WHERE ID=%s""".format(self.schema, self.table)
-        data = (portfolio, user_id)
-
-        self.cur.execute(sql, data)
-        self.connection.commit()
 
     def delete_sessions_for_user(self, user_id):
         sql = """DELETE from {}.{} where user_id = %s""".format(self.schema, self.session_table)

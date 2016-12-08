@@ -189,21 +189,23 @@ class Fond:
 class Portfolio:
     def __init__(self, data):
         self.data = data
-        self.user_id = data["user_id"]
+        self.user_id = data["user"]["user_id"]
         self.portfolio = {fond_data["ticker"]: Fond(**fond_data) for fond_data in data.get("fonds", [])}
 
     def __str__(self):
         return json.dumps(self.get_summary(), indent=4)
 
+    @staticmethod
+    def json_serializer(obj):
+        if isinstance(obj, Fond):
+            return obj.to_json()
+        elif isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
+            return obj.isoformat()
+        else:
+            return None
+
     def to_json(self):
-        def fond_handler(obj):
-            if isinstance(obj, Fond):
-                return obj.to_json()
-            elif isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date):
-                return obj.isoformat()
-            else:
-                return None
-        return json.dumps({"user_id": self.data["user_id"], "fonds": self.portfolio.values()}, default=fond_handler)
+        return self.portfolio.values()
 
     def get_deposits_by_date(self, date):
         return sum([fond.get_deposit_by_date(date) for ticker, fond in self.portfolio.items()])

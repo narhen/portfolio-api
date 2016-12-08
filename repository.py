@@ -3,6 +3,7 @@
 from settings import db_credentials
 from db import Database
 from funds import Portfolio
+import json
 
 class Repository:
     def __init__(self):
@@ -13,11 +14,12 @@ class Repository:
         if not data:
             return None
 
-        data["user_id"] = user_id
         return Portfolio(data)
 
     def put_portfolio(self, portfolio):
-        self.db.save_portfolio(portfolio.to_json(), portfolio.user_id)
+        user_info = self.db.get_user_info_by_user_id(portfolio.user_id)
+        user_info["fonds"] = portfolio.to_json()
+        self.db.save_user(json.dumps(user_info, default=portfolio.json_serializer), portfolio.user_id)
 
     def get_user_info(self, session_token):
         return self.db.get_user_info(session_token)
