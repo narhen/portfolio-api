@@ -87,7 +87,7 @@ class Database:
         self.cur.execute(sql, data)
         self.connection.commit()
 
-        user_info = self.cur.fetchone()[0]
+        user_info, = self.cur.fetchone()
         user_info["user"]["user_id"] = user_id
         return user_info
 

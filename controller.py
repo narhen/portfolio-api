@@ -46,6 +46,12 @@ def check_if_valid_session_key():
     if not session_key or not repo.valid_session_key(session_key):
         return Response(status=401)
 
+@app.route('/logout')
+def logout():
+    session_token = request.headers.get("api-key")
+    repo.delete_session_key(session_token)
+    return Response(status=204)
+
 @app.route('/login')
 def login():
     success, failure = request.args.get("onSuccess"), request.args.get("onFailure")

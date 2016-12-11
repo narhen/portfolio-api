@@ -22,7 +22,10 @@ class Repository:
         self.db.save_user(json.dumps(user_info, default=portfolio.json_serializer), portfolio.user_id)
 
     def get_user_info(self, session_token):
-        return self.db.get_user_info(session_token)
+        user_info = self.db.get_user_info(session_token)
+        if not user_info:
+            return None
+        return user_info["user"]
 
     def _get_user_info_by_google_id(self, google_id):
         return self.db.get_user_info_by_google_id(google_id)
