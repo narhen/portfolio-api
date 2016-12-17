@@ -13,6 +13,7 @@ from cachetools import TTLCache
 
 from repository import Repository
 import settings
+from validation import validate_deposit
 
 repo = Repository()
 app = Flask(__name__)
@@ -130,19 +131,40 @@ def add_fond():
 
     repo.put_portfolio(portfolio)
 
-    return Response(status=201)
+    return Response(status=204)
 
-@app.route("/deposit", methods=["PUT"])
+def add_deposits(deposit_data, portfolio):
+    for fond in deposit_data["fonds"]:
+        print "add", fond["ticker"], deposit_data["date"], fond["amount"]
+        portfolio.deposit(fond["ticker"], deposit_data["date"], fond["amount"])
+    return True
+
+def delete_deposits(deposit_data, portfolio):
+    for ticker in deposit_data["tickers"]:
+        print "delete", ticker, deposit_data["date"]
+        if not portfolio.delete_deposit(ticker, deposit_data["date"]):
+            return False
+    return True
+
+@app.route("/deposit", methods=["PUT", "DELETE"])
 def deposit():
-    session_token = request.headers.get("api-key")
-    ticker = request.form["ticker"]
-    date = datetime.strptime(request.form["date"], "%Y-%m-%d").date()
-    amount = request.form["amount"]
+    if not validate_deposit(request):
+        return Response(status=400)
 
+    session_token = request.headers.get("api-key")
     portfolio = repo.get_portfolio(session_token)
-    portfolio.deposit(ticker, date, amount)
+
+    task_functions = {
+        "DELETE": delete_deposits,
+        "PUT": add_deposits
+    }
+
+    deposit_data = request.get_json()
+    if not task_functions[request.method.upper()](deposit_data, portfolio):
+        return Response(status=400)
+
     repo.put_portfolio(portfolio)
-    return Response(status=201)
+    return Response(status=204)
     
 def main():
     app.run(debug=settings.debug, host="0.0.0.0")

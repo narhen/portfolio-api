@@ -134,7 +134,7 @@ class Fond:
     def quotes(self):
         quotes = self.fond_quotes.get_quotes()
         if self.deposits:
-            start_idx = self.find_entry_by_date(quotes, self.deposits[0]["date"])
+            start_idx = self.find_quote_entry_by_date(quotes, self.deposits[0]["date"])
         else:
             start_idx = -10
 
@@ -142,8 +142,16 @@ class Fond:
         
     def deposit(self, amount, date):
         self.deposits += [{"amount": amount, "date": date}]
+        return True
 
-    def find_entry_by_date(self, quotes, date):
+    def delete_deposit(self, date):
+        num_deposits_before = len(self.deposits)
+        self.deposits = filter(lambda x: x["date"] != date, self.deposits)
+        num_deposits_after = len(self.deposits)
+
+        return num_deposits_after - num_deposits_before == -1
+
+    def find_quote_entry_by_date(self, quotes, date):
         for i in range(len(quotes) - 1, -1, -1):
             if quotes[i]["quote_date"] == date:
                 return i
@@ -241,9 +249,19 @@ class Portfolio:
     def deposit(self, ticker, date, amount):
         if ticker not in self.portfolio:
             print "%s is not registered!" % ticker
-            return
+            return False
 
-        self.portfolio[ticker].deposit(amount, date)
+        return self.portfolio[ticker].deposit(amount, date)
+
+    def delete_deposit(self, ticker, date):
+        if ticker not in self.portfolio:
+            print "%s is not registered!" % ticker
+            return False
+
+        if isinstance(date, str) or isinstance(date, unicode):
+            date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
+
+        return self.portfolio[ticker].delete_deposit(date)
 
     def add_fond(self, ticker, name, ref_idx_ticker):
         if ticker in self.portfolio:
