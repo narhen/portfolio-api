@@ -5,7 +5,7 @@ import json
 import requests
 import uuid
 import urlparse
-from flask import Flask, url_for, request, Response, redirect, session
+from flask import Flask, url_for, request, Response, redirect, session, jsonify
 from flask_cors import CORS
 from flask_oauthlib.client import OAuth
 from datetime import datetime, date
@@ -14,6 +14,7 @@ from cachetools import TTLCache
 from repository import Repository
 import settings
 from validation import validate_deposit
+from error import InvalidUsage
 
 repo = Repository()
 app = Flask(__name__)
@@ -45,7 +46,7 @@ def check_if_valid_session_key():
 
     session_key = request.headers.get("api-key")
     if not session_key or not repo.valid_session_key(session_key):
-        return Response(status=401)
+        raise InvalidUsage("invalid session key", status_code=401)
 
 @app.route('/logout')
 def logout():
@@ -99,9 +100,6 @@ def userinfo():
     session_token = request.headers.get("api-key")
 
     js = repo.get_user_info(session_token)
-    if not js:
-        return Response(status=400)
-
     return Response(json.dumps(js), status=200, mimetype="application/json")
 
 @app.route("/summary")
@@ -135,13 +133,11 @@ def add_fond():
 
 def add_deposits(deposit_data, portfolio):
     for fond in deposit_data["fonds"]:
-        print "add", fond["ticker"], deposit_data["date"], fond["amount"]
         portfolio.deposit(fond["ticker"], deposit_data["date"], fond["amount"])
     return True
 
 def delete_deposits(deposit_data, portfolio):
     for ticker in deposit_data["tickers"]:
-        print "delete", ticker, deposit_data["date"]
         if not portfolio.delete_deposit(ticker, deposit_data["date"]):
             return False
     return True
@@ -149,7 +145,7 @@ def delete_deposits(deposit_data, portfolio):
 @app.route("/deposit", methods=["PUT", "DELETE"])
 def deposit():
     if not validate_deposit(request):
-        return Response(status=400)
+        raise InvalidUsage("invalid input")
 
     session_token = request.headers.get("api-key")
     portfolio = repo.get_portfolio(session_token)
@@ -160,12 +156,17 @@ def deposit():
     }
 
     deposit_data = request.get_json()
-    if not task_functions[request.method.upper()](deposit_data, portfolio):
-        return Response(status=400)
+    task_functions[request.method.upper()](deposit_data, portfolio)
 
     repo.put_portfolio(portfolio)
     return Response(status=204)
-    
+
+@app.errorhandler(InvalidUsage)
+def handle_invalid_usage(error):
+    response = jsonify(error.to_dict())
+    response.status_code = error.status_code
+    return response
+
 def main():
     app.run(debug=settings.debug, host="0.0.0.0")
 

@@ -12,6 +12,7 @@ from prettytable import PrettyTable
 from copy import deepcopy
 
 import settings
+from error import InvalidUsage
 
 class Investment:
     _cache_directory = "/tmp"
@@ -141,15 +142,20 @@ class Fond:
         return quotes[start_idx:]
         
     def deposit(self, amount, date):
-        self.deposits += [{"amount": amount, "date": date}]
-        return True
+        if self.get_deposit_by_date(date):
+            raise InvalidUsage("A deposit for that date is already registered")
+
+        updated_deposits = self.deposits + [{"amount": amount, "date": date}]
+        self.deposits = sorted(updated_deposits, key=lambda deposit: deposit["date"])
 
     def delete_deposit(self, date):
         num_deposits_before = len(self.deposits)
         self.deposits = filter(lambda x: x["date"] != date, self.deposits)
         num_deposits_after = len(self.deposits)
 
-        return num_deposits_after - num_deposits_before == -1
+        num_deleted = num_deposits_before - num_deposits_after
+        if num_deleted is not 1:
+            raise InvalidUsage("failed to delete deposit (%s)" % num_deleted)
 
     def find_quote_entry_by_date(self, quotes, date):
         for i in range(len(quotes) - 1, -1, -1):
@@ -248,15 +254,16 @@ class Portfolio:
 
     def deposit(self, ticker, date, amount):
         if ticker not in self.portfolio:
-            print "%s is not registered!" % ticker
-            return False
+            raise InvalidUsage("%s is not registered in the portfolio" % ticker)
+
+        if isinstance(date, str) or isinstance(date, unicode):
+            date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
 
         return self.portfolio[ticker].deposit(amount, date)
 
     def delete_deposit(self, ticker, date):
         if ticker not in self.portfolio:
-            print "%s is not registered!" % ticker
-            return False
+            raise InvalidUsage("%s is not registered in the portfolio" % ticker)
 
         if isinstance(date, str) or isinstance(date, unicode):
             date = datetime.datetime.strptime(date, "%Y-%m-%d").date()
@@ -265,7 +272,7 @@ class Portfolio:
 
     def add_fond(self, ticker, name, ref_idx_ticker):
         if ticker in self.portfolio:
-            print "Portfolio already contains", ticker
+            raise InvalidUsage("Portfolio already contains", ticker)
 
         self.portfolio[ticker] = Fond(**{"ticker": ticker, "name": name, "ref_index_ticker": ref_idx_ticker})
 
