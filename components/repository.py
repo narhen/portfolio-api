@@ -2,7 +2,7 @@
 
 from settings import db_credentials
 from db import Database
-from funds import Portfolio
+from Portfolio import Portfolio
 import json
 
 class Repository:
