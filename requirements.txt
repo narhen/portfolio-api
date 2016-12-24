@@ -1,0 +1,8 @@
+jsonschema
+requests
+flask
+flask-cors
+flask-oauthlib
+mock
+psycopg2    
+cachetools

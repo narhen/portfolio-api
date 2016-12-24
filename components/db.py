@@ -3,7 +3,6 @@
 import sys
 import json
 import psycopg2
-import bcrypt
 import uuid
 from datetime import datetime
 

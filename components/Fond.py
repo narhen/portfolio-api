@@ -8,10 +8,8 @@ import StringIO
 import csv
 import time
 import datetime
-from prettytable import PrettyTable
 from copy import deepcopy
 
-import settings
 from error import InvalidUsage
 
 class Investment:
@@ -19,7 +17,7 @@ class Investment:
 
     def __init__(self, ticker):
         self.ticker = ticker
-        self.quotes_source_url = settings.quotes_source_url.format(self.ticker)
+        self.quotes_source_url = os.environ["QUOTES_URL"].format(self.ticker)
         self.filename = "%s/%s.json" % (self._cache_directory, self.ticker)
         self.quotes = None
 
