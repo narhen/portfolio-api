@@ -7,7 +7,7 @@ google_client_id = ""
 google_client_secret = ""
 redirect_uri = "/login/verify"
 
-quote_source_url = ""
+quotes_source_url = ""
 
 db_credentials = {
     "dbname": "postgres",
