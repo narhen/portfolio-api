@@ -6,15 +6,9 @@ from Fond import Fond
 from error import InvalidUsage, InvalidDate
 
 class Portfolio:
-    def __init__(self, data):
-        self.data = data
-        if not "user" in data:
-            raise InvalidUsage("missing data ('user') in portfolio")
-        if not "user_id" in data["user"]:
-            raise InvalidUsage("missing data ('user_id') in portfolio")
-
-        self.user_id = data["user"]["user_id"]
-        self.portfolio = {fond_data["ticker"]: Fond(**fond_data) for fond_data in data.get("fonds", [])}
+    def __init__(self, user_id, fonds):
+        self.user_id = user_id
+        self.portfolio = fonds
 
     @staticmethod
     def json_serializer(obj):
@@ -56,7 +50,6 @@ class Portfolio:
                 else:
                     a_entry[0]["value"] += b_entry["value"]
                     a_entry[0]["deposit"] += b_entry["deposit"]
-
             
             return sorted(res, key=lambda x: x["date"])
 
@@ -84,9 +77,4 @@ class Portfolio:
             raise InvalidUsage("Portfolio already contains", ticker)
 
         self.portfolio[ticker] = Fond(**{"ticker": ticker, "name": name, "ref_index_ticker": ref_idx_ticker})
-
-    def get_monetary_value_of_fonds(self):
-        fonds_development = [fond.get_summary() for ticker, fond in self.portfolio.items()]
-        combined_development = self.get_total_development(map(lambda x: deepcopy(x["development"]), fonds_development))
-        return [combined_development] + fonds_development
 

@@ -2,6 +2,7 @@
 
 from settings import db_credentials
 from db import Database
+from Fond import Fond
 from Portfolio import Portfolio
 import json
 
@@ -14,7 +15,13 @@ class Repository:
         if not data:
             return None
 
-        return Portfolio(data)
+        if not "user" in data:
+            raise InvalidUsage("missing data ('user') in portfolio")
+        if not "user_id" in data["user"]:
+            raise InvalidUsage("missing data ('user_id') in portfolio")
+
+        fonds = {fond_data["ticker"]: Fond(**fond_data) for fond_data in data.get("fonds", [])}
+        return Portfolio(data["user"]["user_id"], fonds)
 
     def put_portfolio(self, portfolio):
         user_info = self.db.get_user_info_by_user_id(portfolio.user_id)

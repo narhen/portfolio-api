@@ -113,7 +113,6 @@ class Fond:
 
         if ref_index_ticker:
             self.ref_quotes = Investment(self.ref_index_ticker)
-            print self.ref_quotes.get_quotes()
 
     def __eq__(self, other): 
         return self.ticker == other.ticker
