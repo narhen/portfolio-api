@@ -6,3 +6,4 @@ flask-oauthlib
 mock
 psycopg2    
 cachetools
+requests-mock
