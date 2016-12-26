@@ -6,6 +6,8 @@ from Fond import Fond
 from Portfolio import Portfolio
 import json
 
+from error import InvalidUsage
+
 class Repository:
     def __init__(self):
         self.db = Database(**db_credentials)
