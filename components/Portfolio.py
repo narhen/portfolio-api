@@ -72,9 +72,9 @@ class Portfolio:
 
         return self.portfolio[ticker].delete_deposit(self._string_to_date(date))
 
-    def add_fond(self, ticker, name, ref_idx_ticker):
+    def add_fond(self, ticker, name):
         if ticker in self.portfolio:
             raise InvalidUsage("Portfolio already contains", ticker)
 
-        self.portfolio[ticker] = Fond(**{"ticker": ticker, "name": name, "ref_index_ticker": ref_idx_ticker})
+        self.portfolio[ticker] = Fond(**{"ticker": ticker, "name": name})
 

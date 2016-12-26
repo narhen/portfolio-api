@@ -113,12 +113,12 @@ class TestPortfolio(unittest.TestCase):
         """add_fond should raise exception if fond is already registered"""
         portfolio = Portfolio(1, {"T1": Mock(spec=Fond)})
         with self.assertRaises(InvalidUsage):
-            portfolio.add_fond("T1", "Ticker 1", None)
+            portfolio.add_fond("T1", "Ticker 1")
 
     def test_add_fond(self):
         """add_fond should add fond to portfolio"""
         portfolio = Portfolio(1, {})
-        portfolio.add_fond("T1", "Ticker 1", None)
+        portfolio.add_fond("T1", "Ticker 1")
         self.assertTrue("T1" in portfolio.portfolio.keys())
 
 if __name__ == "__main__":

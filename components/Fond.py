@@ -10,7 +10,7 @@ import time
 import datetime
 from copy import deepcopy
 
-from error import InvalidUsage
+from error import InvalidUsage, InvalidDate
 
 class Investment:
     _cache_directory = "/tmp"
@@ -99,32 +99,24 @@ class Investment:
         return self.quotes["quotes"]
 
 class Fond:
-    def __init__(self, ticker=None, name=None, ref_index_ticker=None, deposits=[]):
+    def __init__(self, ticker=None, name=None, deposits=[]):
         if not ticker:
-            raise Exception("Ticker must contain a valid ticker (was {})".format(ticker))
+            raise InvalidUsage("Ticker must contain a valid ticker (was {})".format(ticker))
         self.ticker = ticker
         self.name = name
         self.fond_quotes = Investment("%s.FOND" % self.ticker)
-        self.ref_index_ticker = ref_index_ticker
         self.deposits = map(lambda x: {
             "date": datetime.datetime.strptime(x["date"], "%Y-%m-%d").date(),
             "amount": int(x["amount"])
         }, deposits)
 
-        if ref_index_ticker:
-            self.ref_quotes = Investment(self.ref_index_ticker)
-
     def __eq__(self, other): 
-        return self.ticker == other.ticker
-
-    def __str__(self):
-        return json.dumps(self.fond_summary(), indent=4)
+        return isinstance(other, Fond) and self.ticker == other.ticker
 
     def to_json(self):
         return {
                 "name": self.name,
                 "ticker": self.ticker,
-                "ref_index_ticker": self.ref_index_ticker,
                 "deposits": self.deposits,
             }
 
@@ -137,8 +129,17 @@ class Fond:
             start_idx = -10
 
         return quotes[start_idx:]
+
+    def _string_to_date(self, date):
+        if isinstance(date, str) or isinstance(date, unicode):
+            return datetime.datetime.strptime(date, "%Y-%m-%d").date()
+        elif isinstance(date, datetime.date):
+            return date
+
+        raise InvalidDate("Unknown type '%s' for date" % type(date).__name__)
         
     def deposit(self, amount, date):
+        date = self._string_to_date(date)
         if self.get_deposit_by_date(date):
             raise InvalidUsage("A deposit for that date is already registered")
 
@@ -146,6 +147,7 @@ class Fond:
         self.deposits = sorted(updated_deposits, key=lambda deposit: deposit["date"])
 
     def delete_deposit(self, date):
+        date = self._string_to_date(date)
         num_deposits_before = len(self.deposits)
         self.deposits = filter(lambda x: x["date"] != date, self.deposits)
         num_deposits_after = len(self.deposits)
@@ -161,6 +163,7 @@ class Fond:
         return None
 
     def get_deposit_by_date(self, date):
+        date = self._string_to_date(date)
         return sum([deposit["amount"] for deposit in self.deposits if deposit["date"] == date])
 
     def _price_developement_percent(self, before, after):
