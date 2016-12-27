@@ -16,7 +16,7 @@ import settings
 from validation import validate_deposit
 from error import InvalidUsage
 
-repo = Repository()
+repo = None
 app = Flask(__name__)
 app.secret_key = settings.secret_key
 CORS(app)
@@ -145,6 +145,7 @@ def delete_deposits(deposit_data, portfolio):
 @app.route("/deposit", methods=["PUT", "DELETE"])
 def deposit():
     if not validate_deposit(request):
+        print "FAIl", request.get_json()
         raise InvalidUsage("invalid input")
 
     session_token = request.headers.get("api-key")
@@ -168,6 +169,8 @@ def handle_invalid_usage(error):
     return response
 
 def main():
+    global repo
+    repo = Repository()
     app.run(debug=settings.debug, host="0.0.0.0")
 
 if __name__ == "__main__":
