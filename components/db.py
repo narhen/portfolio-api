@@ -7,16 +7,20 @@ import uuid
 from datetime import datetime
 
 class Database:
-    def __init__(self, dbname, host, port, user, password):
+    def __init__(self, dbname, schema, host, port, user, password):
         self.connection = psycopg2.connect("dbname='{}' user='{}' host='{}' password='{}'" \
             .format(dbname, user, host, password))
         self.cur = self.connection.cursor()
 
-        self.schema = "portfolioapi"
+        self.schema = schema
         self.table = "user"
         self.session_table = "session"
 
         self._initialize_database()
+
+    def _execute_query(self, query, data=None):
+        self.cur.execute(query, data)
+        self.connection.commit()
 
     def _initialize_database(self):
         self.cur.execute("""CREATE SCHEMA IF NOT EXISTS {}""".format(self.schema))
@@ -42,8 +46,14 @@ class Database:
         return doc
 
     def save_user(self, user_info, user_id):
+        user = self.get_user_info_by_user_id(user_id)
+        if user is None:
+            return None
+
+        user["user"] = user_info
+
         sql = """UPDATE {}.{} SET document=%s WHERE ID=%s""".format(self.schema, self.table)
-        data = (user_info, user_id)
+        data = (json.dumps(user), user_id)
 
         self.cur.execute(sql, data)
         self.connection.commit()
@@ -63,14 +73,17 @@ class Database:
         user_info["user_id"] = user_id
         return user_info
 
-
     def get_user_info_by_user_id(self, user_id):
         sql = """SELECT document FROM {}.{} WHERE id = %s""".format(self.schema, self.table)
         data = (user_id,)
         self.cur.execute(sql, data)
         self.connection.commit()
 
-        user_info = self.cur.fetchone()[0]
+        user_info = self.cur.fetchone()
+        if not user_info:
+            return None
+
+        user_info = user_info[0]
         user_info["user"]["user_id"] = user_id
         return user_info
 
