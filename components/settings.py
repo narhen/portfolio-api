@@ -7,7 +7,7 @@ debug=True
 secret_key = environ["SECRET_KEY"]
 google_client_id = environ["GOOGLE_CLIENT_ID"]
 google_client_secret = environ["GOOGLE_CLIENT_SECRET"]
-redirect_uri = "/login/verify"
+redirect_uri = "/oauth2callback"
 
 db_credentials = {
     "dbname": environ["DB_NAME"],
