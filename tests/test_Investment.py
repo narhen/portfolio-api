@@ -176,4 +176,24 @@ class TestFond(unittest.TestCase):
 
         self.assertEquals(inv.get_quotes(), quotes[::-1])
 
-# TODO add test that checks that get_quotes fills in holes in quotes
+    @patch('components.Investment.Investment._get_from_cache')
+    @patch('components.Investment.Investment._get_quotes_from_remote')
+    @patch('components.Investment.Investment._quotes_has_expired')
+    def test_get_quotes_fills_holes(self, expired_mock, remote_mock, cache_mock):
+        """get_quotes should fill in missing entries in quotes"""
+        inv = Investment("T1")
+        quotes = [
+            {"quote_date": date(year=2016, month=1, day=4), "close": 100},
+            {"quote_date": date(year=2016, month=1, day=1), "close": 104},
+        ]
+        quotes_with_filled_holes = [
+            {"quote_date": date(year=2016, month=1, day=1), "close": 104},
+            {"quote_date": date(year=2016, month=1, day=2), "close": 104},
+            {"quote_date": date(year=2016, month=1, day=3), "close": 104},
+            {"quote_date": date(year=2016, month=1, day=4), "close": 100},
+        ]
+
+        cache_mock.return_value = {"fetch_time": 1234, "quotes": quotes}
+        expired_mock.return_value = False
+
+        self.assertEquals(inv.get_quotes(), quotes_with_filled_holes)
