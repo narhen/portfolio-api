@@ -7,15 +7,15 @@ from mock import PropertyMock, MagicMock, patch, Mock
 from random import randint, uniform
 from datetime import date, datetime, timedelta
 
-from settings import test_db_credentials
+from components.settings import db_credentials
 from components.db import Database
 
 class TestDatabase(unittest.TestCase):
     def setUp(self):
-        self.db = Database(**test_db_credentials)
+        self.db = Database(**db_credentials)
 
     def delete_all_from_table(self, table):
-        self.db._execute_query("DELETE FROM {}.{}".format(test_db_credentials["schema"], table))
+        self.db._execute_query("DELETE FROM {}.{}".format(db_credentials["schema"], table))
 
     def test_get_session_invalid_uuid(self):
         """get_session should return None if uuid is invalid"""

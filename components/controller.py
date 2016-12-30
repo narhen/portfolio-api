@@ -13,7 +13,7 @@ from cachetools import TTLCache
 
 from repository import Repository
 import settings
-from validation import validate_deposit
+from validation import validate_deposit, validate_addfond
 from error import InvalidUsage
 
 repo = None
@@ -119,13 +119,14 @@ def api_summary():
 
 @app.route("/addfond", methods=["POST"])
 def add_fond():
+    if not validate_addfond(request):
+        raise InvalidUsage("invalid input")
+
     session_token = request.headers.get("api-key")
-    ticker = request.form["ticker"]
-    name = request.form["name"]
-    ref_ticker = request.form.get("ref_ticker", None)
+    fond_data = request.get_json()
 
     portfolio = repo.get_portfolio(session_token)
-    portfolio.add_fond(ticker, name, ref_ticker)
+    portfolio.add_fond(fond_data["ticker"], fond_data["name"])
 
     repo.put_portfolio(portfolio)
 
@@ -145,7 +146,6 @@ def delete_deposits(deposit_data, portfolio):
 @app.route("/deposit", methods=["PUT", "DELETE"])
 def deposit():
     if not validate_deposit(request):
-        print "FAIl", request.get_json()
         raise InvalidUsage("invalid input")
 
     session_token = request.headers.get("api-key")

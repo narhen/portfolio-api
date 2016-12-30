@@ -1,12 +1,15 @@
 import jsonschema
 
-def _validate_json(data, schema):
+def _validate_json(request, schema):
+    if not request.is_json:
+        return False
+
+    data = request.get_json()
     try:
         jsonschema.validate(data, schema)
         return True
     except:
         return False
-
 
 def _validate_add_deposit(request):
     ticker_schema = {
@@ -29,14 +32,8 @@ def _validate_add_deposit(request):
         },
         "required": ["date", "fonds"]
     }
-    if not request.is_json:
-        return False
 
-    deposit_data = request.get_json()
-    if not _validate_json(deposit_data, schema):
-        return False
-
-    return True
+    return _validate_json(request, schema)
 
 def _validate_delete_deposit(request):
     schema = {
@@ -50,14 +47,8 @@ def _validate_delete_deposit(request):
         },
         "required": ["date", "tickers"]
     }
-    if not request.is_json:
-        return False
 
-    deposit_data = request.get_json()
-    if not _validate_json(deposit_data, schema):
-        return False
-
-    return True
+    return _validate_json(request, schema)
 
 def validate_deposit(request):
     if request.method == "DELETE":
@@ -66,3 +57,15 @@ def validate_deposit(request):
         return _validate_add_deposit(request)
     else:
         return False
+
+def validate_addfond(request):
+    schema = {
+        "type": "object",
+        "properties": {
+            "ticker": { "type": "string" },
+            "name": { "type": "string" },
+        },
+        "required": ["ticker", "name"]
+    }
+
+    return _validate_json(request, schema)

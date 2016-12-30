@@ -28,7 +28,7 @@ class Portfolio:
         raise InvalidDate("Unknown type '%s' for date" % type(date).__name__)
 
     def to_json(self):
-        return self.portfolio.values()
+        return json.dumps(self.portfolio.values(), default=Portfolio.json_serializer)
 
     def get_deposits_by_date(self, date):
         return sum([fond.get_deposit_by_date(self._string_to_date(date)) for ticker, fond in self.portfolio.items()])

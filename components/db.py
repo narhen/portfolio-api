@@ -24,7 +24,7 @@ class Database:
 
     def _initialize_database(self):
         self.cur.execute("""CREATE SCHEMA IF NOT EXISTS {}""".format(self.schema))
-        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}.{}(id BIGSERIAL PRIMARY KEY, document JSONB)""".format(self.schema, self.table))
+        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}.{}(id BIGSERIAL PRIMARY KEY, user_data JSONB, portfolio JSONB)""".format(self.schema, self.table))
         self.cur.execute("""CREATE TABLE IF NOT EXISTS {}.{} (key uuid PRIMARY KEY, user_id BIGSERIAL, created TIMESTAMP)"""
             .format(self.schema, self.session_table))
         self.connection.commit()
@@ -36,30 +36,26 @@ class Database:
 
         uuid, user_id, timestamp = session
 
-        sql = """SELECT id, document FROM {}.{} WHERE ID=%s""".format(self.schema, self.table)
+        sql = """SELECT id, portfolio FROM {}.{} WHERE ID=%s""".format(self.schema, self.table)
         data = (user_id,)
         self.cur.execute(sql, data)
         self.connection.commit()
 
-        user_id, doc = self.cur.fetchone()
-        doc["user"]["user_id"] = user_id
-        return doc
+        return self.cur.fetchone()
+
+    def _update_document(self, document_name, user_id, document):
+        sql = """UPDATE {}.{} SET {}=%s WHERE ID=%s""".format(self.schema, self.table, document_name)
+        data = (document, user_id)
+        self._execute_query(sql, data)
+
+    def save_portfolio(self, portfolio, user_id):
+        self._update_document("portfolio", user_id, portfolio)
 
     def save_user(self, user_info, user_id):
-        user = self.get_user_info_by_user_id(user_id)
-        if user is None:
-            return None
-
-        user["user"] = user_info
-
-        sql = """UPDATE {}.{} SET document=%s WHERE ID=%s""".format(self.schema, self.table)
-        data = (json.dumps(user), user_id)
-
-        self.cur.execute(sql, data)
-        self.connection.commit()
+        self._update_document("user", user_id, user_info)
 
     def get_user_info_by_google_id(self, google_id):
-        sql = """SELECT id, document -> 'user' FROM %s.%s WHERE document #>> '{user,id}' = %%s""" % (self.schema, self.table)
+        sql = """SELECT id, user_data FROM %s.%s WHERE user_data #> '{id}' = %%s""" % (self.schema, self.table)
         data = (google_id,)
 
         self.cur.execute(sql, data)
@@ -73,19 +69,19 @@ class Database:
         user_info["user_id"] = user_id
         return user_info
 
-    def get_user_info_by_user_id(self, user_id):
-        sql = """SELECT document FROM {}.{} WHERE id = %s""".format(self.schema, self.table)
+    def _get_document_by_user_id(self, user_id, document_name):
+        sql = """SELECT id, {} FROM {}.{} WHERE id = %s""".format(document_name, self.schema, self.table)
         data = (user_id,)
         self.cur.execute(sql, data)
         self.connection.commit()
 
-        user_info = self.cur.fetchone()
-        if not user_info:
-            return None
+        return self.cur.fetchone()
 
-        user_info = user_info[0]
-        user_info["user"]["user_id"] = user_id
-        return user_info
+    def get_user_info_by_user_id(self, user_id):
+        return self._get_document_by_user_id(user_id, "user_data")
+
+    def get_portfolio_by_user_id(self, user_id):
+        return self._get_document_by_user_id(user_id, "portfolio")
 
     def get_user_info(self, session_token):
         session = self.get_session(session_token)
@@ -94,18 +90,18 @@ class Database:
 
         uuid, user_id, timestamp = session
 
-        sql = """SELECT document FROM {}.{} WHERE id = %s""".format(self.schema, self.table)
+        sql = """SELECT user_data FROM {}.{} WHERE id = %s""".format(self.schema, self.table)
         data = (user_id,)
         self.cur.execute(sql, data)
         self.connection.commit()
 
         user_info, = self.cur.fetchone()
-        user_info["user"]["user_id"] = user_id
+        user_info["user_id"] = user_id
         return user_info
 
     def create_user(self, user_info):
-        sql = """INSERT INTO {}.{} (document) VALUES (%s) RETURNING id""".format(self.schema, self.table)
-        data = (json.dumps({ "user": user_info}),)
+        sql = """INSERT INTO {}.{} (user_data, portfolio) VALUES (%s, '[]') RETURNING id""".format(self.schema, self.table)
+        data = (json.dumps(user_info),)
 
         self.cur.execute(sql, data)
         self.connection.commit()

@@ -13,28 +13,20 @@ class Repository:
         self.db = Database(**db_credentials)
 
     def get_portfolio(self, session_token):
-        data = self.db.get_portfolio(session_token)
-        if not data:
+        result = self.db.get_portfolio(session_token)
+        if not result:
             return None
 
-        if not "user" in data:
-            raise InvalidUsage("missing data ('user') in portfolio")
-        if not "user_id" in data["user"]:
-            raise InvalidUsage("missing data ('user_id') in portfolio")
+        user_id, data = result
 
-        fonds = {fond_data["ticker"]: Fond(**fond_data) for fond_data in data.get("fonds", [])}
-        return Portfolio(data["user"]["user_id"], fonds)
+        fonds = {fond_data["ticker"]: Fond(**fond_data) for fond_data in data}
+        return Portfolio(user_id, fonds)
 
     def put_portfolio(self, portfolio):
-        user_info = self.db.get_user_info_by_user_id(portfolio.user_id)
-        user_info["fonds"] = portfolio.to_json()
-        self.db.save_user(json.dumps(user_info, default=portfolio.json_serializer), portfolio.user_id)
+        self.db.save_portfolio(portfolio.to_json(), portfolio.user_id)
 
     def get_user_info(self, session_token):
-        user_info = self.db.get_user_info(session_token)
-        if not user_info:
-            return None
-        return user_info["user"]
+        return self.db.get_user_info(session_token)
 
     def _get_user_info_by_google_id(self, google_id):
         return self.db.get_user_info_by_google_id(google_id)
