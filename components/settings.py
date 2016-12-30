@@ -2,7 +2,7 @@
 
 from os import environ
 
-debug=True
+debug=environ.get("DEBUG", False) != False
 
 secret_key = environ["SECRET_KEY"]
 google_client_id = environ["GOOGLE_CLIENT_ID"]

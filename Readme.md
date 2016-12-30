@@ -3,4 +3,16 @@
 
 
 ## Running tests
+```
 $ python -m unittest discover
+```
+
+## Building docker image
+```
+$ docker build -t portfolio-api .
+```
+
+## Running docker container
+```
+$ docker run --env-file vars.env --link postgres --name portfolio-api -d -p 5000:5000 portfolio-api
+```

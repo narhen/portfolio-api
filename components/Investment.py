@@ -9,7 +9,7 @@ import json
 from copy import deepcopy
 import datetime
 
-from components.error import InvalidUsage
+from error import InvalidUsage
 from settings import quotes_source_url
 
 class Investment:
