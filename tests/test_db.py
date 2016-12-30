@@ -79,7 +79,7 @@ class TestDatabase(unittest.TestCase):
         session_key = self.db.new_session(user_id)
 
         user_info["user_id"] = user_id
-        self.assertEquals(self.db.get_user_info(session_key), {"user": user_info})
+        self.assertEquals(self.db.get_user_info(session_key), user_info)
 
         self.delete_all_from_table(self.db.table)
 
@@ -94,8 +94,7 @@ class TestDatabase(unittest.TestCase):
         user_info = {"id": "123124124", "name": "Kari", "family_name": "Nordmann"}
         user_id = self.db.create_user(user_info)
 
-        user_info["user_id"] = user_id
-        self.assertEquals(self.db.get_user_info_by_user_id(user_id), {"user": user_info})
+        self.assertEquals(self.db.get_user_info_by_user_id(user_id), (user_id, user_info))
 
         self.delete_all_from_table(self.db.table)
 
@@ -105,8 +104,7 @@ class TestDatabase(unittest.TestCase):
         user_info = {u"id": google_id, u"name": u"Kari", u"family_name": u"Nordmann"}
         user_id = self.db.create_user(user_info)
 
-        user_info["user_id"] = user_id
-        self.assertEquals(self.db.get_user_info_by_google_id(google_id), user_info)
+        self.assertEquals(self.db.get_user_info_by_google_id(google_id), (user_id, user_info))
 
         self.delete_all_from_table(self.db.table)
 
@@ -121,12 +119,11 @@ class TestDatabase(unittest.TestCase):
         user_info = {u"id": u"123123123", u"name": u"Kari", u"family_name": u"Nordmann"}
         user_id = self.db.create_user(user_info)
 
-        user_info[u"user_id"] = user_id
-        self.assertEquals(self.db.get_user_info_by_user_id(user_id), {u"user": user_info})
+        self.assertEquals(self.db.get_user_info_by_user_id(user_id), (user_id, user_info))
 
         user_info[u"middle_name"] = u"Tarzan"
-        self.db.save_user(user_info, user_id)
+        self.db.save_user(json.dumps(user_info), user_id)
 
-        self.assertEquals(self.db.get_user_info_by_user_id(user_id), {u"user": user_info})
+        self.assertEquals(self.db.get_user_info_by_user_id(user_id), (user_id, user_info))
 
         self.delete_all_from_table(self.db.table)

@@ -52,22 +52,16 @@ class Database:
         self._update_document("portfolio", user_id, portfolio)
 
     def save_user(self, user_info, user_id):
-        self._update_document("user", user_id, user_info)
+        self._update_document("user_data", user_id, user_info)
 
     def get_user_info_by_google_id(self, google_id):
-        sql = """SELECT id, user_data FROM %s.%s WHERE user_data #> '{id}' = %%s""" % (self.schema, self.table)
+        sql = """SELECT id, user_data FROM %s.%s WHERE user_data #>> '{id}' = %%s""" % (self.schema, self.table)
         data = (google_id,)
 
         self.cur.execute(sql, data)
         self.connection.commit()
 
-        user_info = self.cur.fetchone()
-        if not user_info:
-            return None
-
-        user_id, user_info = user_info
-        user_info["user_id"] = user_id
-        return user_info
+        return self.cur.fetchone()
 
     def _get_document_by_user_id(self, user_id, document_name):
         sql = """SELECT id, {} FROM {}.{} WHERE id = %s""".format(document_name, self.schema, self.table)

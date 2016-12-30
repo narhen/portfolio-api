@@ -53,9 +53,25 @@ class TestFond(unittest.TestCase):
         controller.repo.get_portfolio.return_value = portfolio_mock
         controller.repo.valid_session_key.return_value = True
 
-        result = self.app.post("/addfond", headers={"api-key": "123"}, data={"ticker": "T1", "name": "Ticker 1"})
+        result = self.app.post("/addfond",
+            headers={"api-key": "123"},
+            data=json.dumps({"ticker": "T1", "name": "Ticker 1"}),
+            content_type="application/json")
         self.assertEquals(result.status_code, 204)
         portfolio_mock.add_fond.assert_called_once()
+
+    def test_addfond_returns_401_on_validation_error(self):
+        """ POST /addfond with an invalid json request should return 400"""
+        portfolio_mock = Mock(spec=Portfolio)
+        controller.repo.get_portfolio.return_value = portfolio_mock
+        controller.repo.valid_session_key.return_value = True
+
+        result = self.app.post("/addfond",
+            headers={"api-key": "123"},
+            data=json.dumps({"sticker": "T1"}),
+            content_type="application/json")
+        self.assertEquals(result.status_code, 400)
+        portfolio_mock.add_fond.assert_not_called()
 
     def test_add_deposit(self):
         """PUT deposit should return 204 on success"""

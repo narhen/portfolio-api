@@ -19,22 +19,8 @@ class TestFond(unittest.TestCase):
         db_instance.get_portfolio.return_value = None
         self.assertIsNone(repo.get_portfolio("123"))
 
-        db_instance.get_portfolio.return_value = {"user": {"user_id": 1}}
+        db_instance.get_portfolio.return_value = (1, [])
         self.assertIsInstance(repo.get_portfolio("123"), Portfolio)
-
-    @patch('components.repository.Database')
-    def test_get_portfolio_raises_exception(self, db_mock):
-        "get_portfolio raises an exception if portfolio does not contain needed data"""
-        repo = Repository()
-
-        db_instance = db_mock.return_value
-        db_instance.return_value = {"fonds": []}
-        with self.assertRaises(InvalidUsage):
-            repo.get_portfolio("123")
-
-        db_instance.return_value = {"user": {}}
-        with self.assertRaises(InvalidUsage):
-            repo.get_portfolio("123")
 
     @patch('components.repository.Database')
     def test_put_portfolio_raises_exception(self, db_mock):
@@ -45,7 +31,7 @@ class TestFond(unittest.TestCase):
         db_instance.get_user_info_by_iser_id.return_value = {}
 
         repo.put_portfolio(Portfolio(1, {}))
-        db_instance.save_user.assert_called_once()
+        db_instance.save_portfolio.assert_called_once()
 
     @patch('components.repository.Database')
     def test_get_user_info(self, db_mock):
@@ -61,8 +47,8 @@ class TestFond(unittest.TestCase):
         """get_user_info returns user data if user was found"""
         repo = Repository()
         db_instance = db_mock.return_value
-        db_instance.get_user_info.return_value = {"user": {"user_id": 1}}
-        self.assertEquals(repo.get_user_info("123"), {"user_id": 1})
+        db_instance.get_user_info.return_value = (1, {"name": "Kari"})
+        self.assertEquals(repo.get_user_info("123"), (1, {"name": "Kari"}))
 
     @patch('components.repository.Database')
     def test_generate_session_key(self, db_mock):
@@ -71,10 +57,10 @@ class TestFond(unittest.TestCase):
 
         db_instance = db_mock.return_value
 
-        db_instance.get_user_info_by_google_id.return_value = {"user_id": 1}
-        db_instance.new_session.return_value = "1234"
+        db_instance.get_user_info_by_google_id.return_value = (1, {"id": 12345})
+        db_instance.new_session.return_value = "1234abcd"
         
-        self.assertEquals(repo.generate_session_key({"id": 123}), "1234")
+        self.assertEquals(repo.generate_session_key({"id": 12345}), "1234abcd")
 
         db_instance.new_session.assert_called_once()
         db_instance.create_user.assert_not_called()

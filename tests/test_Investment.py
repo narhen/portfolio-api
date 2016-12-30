@@ -17,7 +17,7 @@ class TestFond(unittest.TestCase):
 20161220,T1,Fonds,1814.28,1814.28,1814.28,1814.28,0,0
 """
     parsed_csvdata = [{
-        "quote_date": "20161222",
+        "quote_date": date(year=2016, month=12, day=22),
         "paper": "T1",
         "exch": "Fonds",
         "open": '1814.05',
@@ -27,7 +27,7 @@ class TestFond(unittest.TestCase):
         "volume": '0',
         "value": '0'
     }, {
-        "quote_date": "20161221",
+        "quote_date": date(year=2016, month=12, day=21),
         "paper": "T1",
         "exch": "Fonds",
         "open": '1807.52',
@@ -37,7 +37,7 @@ class TestFond(unittest.TestCase):
         "volume": '0',
         "value": '0'
     }, {
-        "quote_date": "20161220",
+        "quote_date": date(year=2016, month=12, day=20),
         "paper": "T1",
         "exch": "Fonds",
         "open": '1814.28',
@@ -148,23 +148,32 @@ class TestFond(unittest.TestCase):
         cache_mock.return_value = {"fetch_time": 1234, "quotes": [1, 2, 3]}
         expired_mock.return_value = True
         remote_mock.return_value = {"fetch_time": 12345, "quotes": []}
+        expired_mock.return_value = False
 
         self.assertEquals(inv.get_quotes(), [])
 
     @patch('components.Investment.Investment._get_from_cache')
     @patch('components.Investment.Investment._get_quotes_from_remote')
     @patch('components.Investment.Investment._quotes_has_expired')
-    @patch('components.Investment.Investment._put_in_cache')
-    def test_get_quotes(self, put_cache_mock, expired_mock, remote_mock, cache_mock):
+    def test_get_quotes(self, expired_mock, remote_mock, cache_mock):
         """get_quotes should retrieve quotes from cache if not expired"""
         inv = Investment("T1")
+        quotes = [
+            {"quote_date": date(year=2016, month=1, day=5), "close": 100},
+            {"quote_date": date(year=2016, month=1, day=4), "close": 101},
+            {"quote_date": date(year=2016, month=1, day=3), "close": 102},
+            {"quote_date": date(year=2016, month=1, day=2), "close": 103},
+            {"quote_date": date(year=2016, month=1, day=1), "close": 104},
+        ]
 
-        cache_mock.return_value = {"fetch_time": 1234, "quotes": [1, 2, 3]}
+        cache_mock.return_value = {"fetch_time": 1234, "quotes": quotes[:3]}
         expired_mock.return_value = False
 
-        self.assertEquals(inv.get_quotes(), [1, 2, 3])
+        self.assertEquals(inv.get_quotes(), quotes[:3][::-1])
 
         expired_mock.return_value = True
-        remote_mock.return_value = {"fetch_time": 12345, "quotes": [1, 2, 3, 4]}
+        remote_mock.return_value = {"fetch_time": 12345, "quotes": quotes}
 
-        self.assertEquals(inv.get_quotes(), [1, 2, 3, 4])
+        self.assertEquals(inv.get_quotes(), quotes[::-1])
+
+# TODO add test that checks that get_quotes fills in holes in quotes

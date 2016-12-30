@@ -37,7 +37,7 @@ class Repository:
     def generate_session_key(self, user_data):
         user_info = self._get_user_info_by_google_id(user_data["id"])
         if user_info:
-            user_id = user_info["user_id"]
+            user_id, data = user_info
         else:
             user_id = self.create_user(user_data)
 
