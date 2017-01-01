@@ -12,9 +12,8 @@ quotes_source_url = environ["QUOTES_URL"]
 
 db_credentials = {
     "dbname": environ["DB_NAME"],
-    "schema": "portfolioapi",
     "user": environ["DB_USER"],
     "host": environ["DB_HOST"],
-    "port": environ["DB_PORT"],
+    "port": int(environ["DB_PORT"]),
     "password": environ["DB_PASSWORD"],
 }

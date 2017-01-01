@@ -117,8 +117,8 @@ class TestFond(unittest.TestCase):
 
         self.assertTrue(inv._quotes_has_expired(quotes))
 
-    @patch('components.Investment.Investment._get_quotes_from_remote')
-    def test__quotes_has_expired(self, mock):
+    @patch('components.Investment.Investment._get_date_today')
+    def test__quotes_has_expired_30_mins(self, mock):
         """_quotes_has_expired_should return True if fetch time was over 30 minutes ago"""
         mock.return_value = datetime(year=2016, month=1, day=4, hour=12, minute=40)
         inv = Investment("T1")

@@ -15,7 +15,7 @@ class TestDatabase(unittest.TestCase):
         self.db = Database(**db_credentials)
 
     def delete_all_from_table(self, table):
-        self.db._execute_query("DELETE FROM {}.{}".format(db_credentials["schema"], table))
+        self.db._execute_query("DELETE FROM {}".format(table))
 
     def test_get_session_invalid_uuid(self):
         """get_session should return None if uuid is invalid"""
@@ -28,7 +28,7 @@ class TestDatabase(unittest.TestCase):
         uuid = self.db.new_session(1)
         key, user_id, created = self.db.get_session(uuid)
         self.assertEquals(user_id, 1)
-        self.assertEquals(created.replace(microsecond=0), datetime.now().replace(microsecond=0))
+        self.assertEquals(created.replace(second=0, microsecond=0), datetime.now().replace(second=0, microsecond=0))
         self.assertIsInstance(key, str)
 
         self.delete_all_from_table(self.db.session_table)
@@ -100,8 +100,8 @@ class TestDatabase(unittest.TestCase):
 
     def test_get_user_info_by_google_id(self):
         """get_user_info_by_google_id should return user info if user exists"""
-        google_id = u"123123123"
-        user_info = {u"id": google_id, u"name": u"Kari", u"family_name": u"Nordmann"}
+        google_id = "123123123"
+        user_info = {"id": google_id, "name": "Kari", "family_name": "Nordmann"}
         user_id = self.db.create_user(user_info)
 
         self.assertEquals(self.db.get_user_info_by_google_id(google_id), (user_id, user_info))

@@ -2,17 +2,15 @@
 
 import sys
 import json
-import psycopg2
 import uuid
+import MySQLdb
 from datetime import datetime
 
 class Database:
-    def __init__(self, dbname, schema, host, port, user, password):
-        self.connection = psycopg2.connect("dbname='{}' user='{}' host='{}' password='{}'" \
-            .format(dbname, user, host, password))
+    def __init__(self, dbname, host, port, user, password):
+        self.connection = MySQLdb.connect(db=dbname, host=host, user=user, passwd=password)
         self.cur = self.connection.cursor()
 
-        self.schema = schema
         self.table = "user"
         self.session_table = "session"
 
@@ -23,10 +21,8 @@ class Database:
         self.connection.commit()
 
     def _initialize_database(self):
-        self.cur.execute("""CREATE SCHEMA IF NOT EXISTS {}""".format(self.schema))
-        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}.{}(id BIGSERIAL PRIMARY KEY, user_data JSONB, portfolio JSONB)""".format(self.schema, self.table))
-        self.cur.execute("""CREATE TABLE IF NOT EXISTS {}.{} (key uuid PRIMARY KEY, user_id BIGSERIAL, created TIMESTAMP)"""
-            .format(self.schema, self.session_table))
+        self.cur.execute("""CREATE TABLE IF NOT EXISTS {} (id INT NOT NULL AUTO_INCREMENT PRIMARY KEY, user_data JSON, portfolio JSON)""".format(self.table))
+        self.cur.execute("""CREATE TABLE IF NOT EXISTS {} (uuid VARCHAR(36) UNIQUE NOT NULL PRIMARY KEY, user_id INT, created TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""".format(self.session_table))
         self.connection.commit()
 
     def get_portfolio(self, session_token):
@@ -36,7 +32,7 @@ class Database:
 
         uuid, user_id, timestamp = session
 
-        sql = """SELECT id, portfolio FROM {}.{} WHERE ID=%s""".format(self.schema, self.table)
+        sql = """SELECT id, portfolio FROM {} WHERE ID=%s""".format(self.table)
         data = (user_id,)
         self.cur.execute(sql, data)
         self.connection.commit()
@@ -44,7 +40,7 @@ class Database:
         return self.cur.fetchone()
 
     def _update_document(self, document_name, user_id, document):
-        sql = """UPDATE {}.{} SET {}=%s WHERE ID=%s""".format(self.schema, self.table, document_name)
+        sql = """UPDATE {} SET {}=%s WHERE ID=%s""".format(self.table, document_name)
         data = (document, user_id)
         self._execute_query(sql, data)
 
@@ -55,21 +51,30 @@ class Database:
         self._update_document("user_data", user_id, user_info)
 
     def get_user_info_by_google_id(self, google_id):
-        sql = """SELECT id, user_data FROM %s.%s WHERE user_data #>> '{id}' = %%s""" % (self.schema, self.table)
+        sql = """SELECT id, user_data FROM %s WHERE user_data->"$.id" = %%s""" % self.table
         data = (google_id,)
 
         self.cur.execute(sql, data)
         self.connection.commit()
 
-        return self.cur.fetchone()
+        result = self.cur.fetchone()
+        if not result:
+            return None
+
+        id, user_data = result
+        return id, json.loads(user_data)
 
     def _get_document_by_user_id(self, user_id, document_name):
-        sql = """SELECT id, {} FROM {}.{} WHERE id = %s""".format(document_name, self.schema, self.table)
+        sql = """SELECT id, {} FROM {} WHERE id = %s""".format(document_name, self.table)
         data = (user_id,)
         self.cur.execute(sql, data)
         self.connection.commit()
 
-        return self.cur.fetchone()
+        result = self.cur.fetchone()
+        if not result:
+            return None
+        id, document = result
+        return id, json.loads(document)
 
     def get_user_info_by_user_id(self, user_id):
         return self._get_document_by_user_id(user_id, "user_data")
@@ -84,26 +89,31 @@ class Database:
 
         uuid, user_id, timestamp = session
 
-        sql = """SELECT user_data FROM {}.{} WHERE id = %s""".format(self.schema, self.table)
+        sql = """SELECT user_data FROM {} WHERE id = %s""".format(self.table)
         data = (user_id,)
         self.cur.execute(sql, data)
         self.connection.commit()
 
         user_info, = self.cur.fetchone()
+        user_info = json.loads(user_info)
+
         user_info["user_id"] = user_id
         return user_info
 
     def create_user(self, user_info):
-        sql = """INSERT INTO {}.{} (user_data, portfolio) VALUES (%s, '[]') RETURNING id""".format(self.schema, self.table)
+        sql = """INSERT INTO {} (user_data, portfolio) VALUES (%s, '[]')""".format(self.table)
         data = (json.dumps(user_info),)
 
         self.cur.execute(sql, data)
         self.connection.commit()
 
+        self.cur.execute("SELECT LAST_INSERT_ID()")
+        self.connection.commit()
+
         return self.cur.fetchone()[0]
 
     def delete_sessions_for_user(self, user_id):
-        sql = """DELETE from {}.{} where user_id = %s""".format(self.schema, self.session_table)
+        sql = """DELETE FROM {} WHERE user_id = %s""".format(self.session_table)
         data = (user_id,)
 
         self.cur.execute(sql, data)
@@ -111,8 +121,9 @@ class Database:
 
     def new_session(self, user_id):
         self.delete_sessions_for_user(user_id)
+
         new_uuid = str(uuid.uuid4())
-        sql = """INSERT INTO {}.{} (key, user_id, created) VALUES (%s, %s, %s)""".format(self.schema, self.session_table)
+        sql = """INSERT INTO {} (uuid, user_id, created) VALUES (%s, %s, %s)""".format(self.session_table)
         data = (new_uuid, user_id, datetime.now())
 
         self.cur.execute(sql, data)
@@ -131,7 +142,7 @@ class Database:
         if not self._is_valid_uuid4(uuid_string):
             return None
 
-        sql = """SELECT * FROM {}.{} WHERE key = %s""".format(self.schema, self.session_table)
+        sql = """SELECT * FROM {} WHERE uuid = %s""".format(self.session_table)
         data = (uuid_string,)
 
         self.cur.execute(sql, data)
