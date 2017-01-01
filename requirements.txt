@@ -6,4 +6,4 @@ flask-oauthlib
 mock
 cachetools
 requests-mock
-python-mysql
+mysql-python
