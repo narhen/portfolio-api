@@ -37,7 +37,8 @@ class Database:
         self.cur.execute(sql, data)
         self.connection.commit()
 
-        return self.cur.fetchone()
+        id, portfolio = self.cur.fetchone()
+        return id, json.loads(portfolio, "ISO-8859-1")
 
     def _update_document(self, document_name, user_id, document):
         sql = """UPDATE {} SET {}=%s WHERE ID=%s""".format(self.table, document_name)
@@ -62,7 +63,7 @@ class Database:
             return None
 
         id, user_data = result
-        return id, json.loads(user_data)
+        return id, json.loads(user_data, "ISO-8859-1")
 
     def _get_document_by_user_id(self, user_id, document_name):
         sql = """SELECT id, {} FROM {} WHERE id = %s""".format(document_name, self.table)
@@ -74,7 +75,7 @@ class Database:
         if not result:
             return None
         id, document = result
-        return id, json.loads(document)
+        return id, json.loads(document, "ISO-8859-1")
 
     def get_user_info_by_user_id(self, user_id):
         return self._get_document_by_user_id(user_id, "user_data")
@@ -95,7 +96,7 @@ class Database:
         self.connection.commit()
 
         user_info, = self.cur.fetchone()
-        user_info = json.loads(user_info)
+        user_info = json.loads(user_info, "ISO-8859-1")
 
         user_info["user_id"] = user_id
         return user_info

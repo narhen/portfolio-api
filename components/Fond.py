@@ -101,7 +101,8 @@ class Fond:
             rows.append({
                 "date": curr_date,
                 "value": cash,
-                "deposit": deposit
+                "deposit": deposit,
+                "quote": self.quotes[i]
             })
 
         return rows
